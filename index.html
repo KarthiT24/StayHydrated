@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>HydroPulse — Daily Water Reminder</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        hydro: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Android Material 3 & Liquid Animations */
+        * {
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Animated Water Wave inside Progress Circle */
+        @keyframes waveMove {
+            0% { transform: translateX(0) translateZ(0) scaleY(1); }
+            50% { transform: translateX(-25%) translateZ(0) scaleY(0.85); }
+            100% { transform: translateX(-50%) translateZ(0) scaleY(1); }
+        }
+
+        .water-wave {
+            animation: waveMove 6s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite;
+        }
+
+        .water-wave-slow {
+            animation: waveMove 9s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite reverse;
+        }
+
+        /* Progress Ring Transition */
+        .progress-ring-circle {
+            transition: stroke-dashoffset 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+
+        /* Bell Ringing Animation for Popup */
+        @keyframes bellRing {
+            0%, 100% { transform: rotate(0); }
+            15% { transform: rotate(16deg); }
+            30% { transform: rotate(-14deg); }
+            45% { transform: rotate(10deg); }
+            60% { transform: rotate(-8deg); }
+            75% { transform: rotate(4deg); }
+        }
+
+        .animate-bell {
+            animation: bellRing 1.4s ease-in-out infinite;
+        }
+
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 22px;
+            width: 22px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+            margin-top: -7px;
+            border: 3px solid #ffffff;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: rgba(56, 189, 248, 0.25);
+            border-radius: 999px;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.3);
+            border-radius: 999px;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col items-center justify-start sm:py-6 transition-colors duration-300">
+
+    <!-- MOBILE APK SHELL CONTAINER -->
+    <div class="w-full max-w-md bg-white dark:bg-slate-900 sm:rounded-[2.5rem] sm:shadow-2xl sm:border sm:border-slate-200 dark:sm:border-slate-800 min-h-screen sm:min-h-[840px] flex flex-col justify-between relative overflow-hidden">
+
+        <!-- ANDROID STATUS BAR SIMULATION -->
+        <div class="px-6 pt-3 pb-2 flex items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-900/90 backdrop-blur-md sticky top-0 z-30 border-b border-slate-100 dark:border-slate-800/60">
+            <div class="flex items-center gap-2">
+                <span id="statusBarTime" class="font-mono font-bold text-slate-700 dark:text-slate-200">09:41</span>
+                <span class="px-1.5 py-0.5 text-[10px] font-semibold bg-sky-500/15 text-sky-600 dark:text-sky-400 rounded-md">APK LITE</span>
+            </div>
+            <div class="flex items-center gap-2.5">
+                <i id="alarmStatusIcon" class="fa-solid fa-bell text-sky-500 text-[11px]" title="Reminder Active"></i>
+                <i class="fa-solid fa-wifi text-[11px]"></i>
+                <i class="fa-solid fa-battery-three-quarters text-xs"></i>
+            </div>
+        </div>
+
+        <!-- APP HEADER -->
+        <header class="px-5 pt-4 pb-2 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center shadow-lg shadow-sky-500/25 text-white">
+                    <i class="fa-solid fa-droplet text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-extrabold tracking-tight flex items-center gap-1.5">
+                        HydroPulse
+                    </h1>
+                    <p id="currentDateDisplay" class="text-xs text-slate-500 dark:text-slate-400 font-medium">Loading date...</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <!-- Sound Toggle Button -->
+                <button id="soundToggleBtn" onclick="toggleSound()" class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 transition active:scale-95" title="Toggle Chime Sound">
+                    <i id="soundToggleIcon" class="fa-solid fa-volume-high text-sm text-sky-500"></i>
+                </button>
+                <!-- Theme Toggle Button -->
+                <button onclick="toggleTheme()" class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 transition active:scale-95" title="Switch Light/Dark Mode">
+                    <i id="themeToggleIcon" class="fa-solid fa-sun text-sm text-amber-400"></i>
+                </button>
+                <!-- Start of Day / Target Setup Button -->
+                <button onclick="openSetupModal(false)" class="px-3 py-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 font-semibold text-xs flex items-center gap-1.5 border border-sky-500/20 transition active:scale-95">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Goal</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-1 px-5 pb-6 space-y-5 overflow-y-auto">
+
+            <!-- BIOMETRIC / GOAL INFO PILL -->
+            <div class="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-800 rounded-2xl p-3 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center">
+                        <i class="fa-solid fa-person-rays text-sm"></i>
+                    </div>
+                    <div>
+                        <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500" id="goalSourceLabel">Daily Hydration Plan</div>
+                        <div class="text-xs font-semibold text-slate-700 dark:text-slate-200" id="biometricSummaryText">Target: 2500 ml / day</div>
+                    </div>
+                </div>
+                <button onclick="openSetupModal(true)" class="text-xs font-semibold text-sky-500 hover:text-sky-400 px-2.5 py-1.5 rounded-lg hover:bg-sky-500/10 transition">
+                    New Day <i class="fa-solid fa-rotate-right ml-0.5 text-[10px]"></i>
+                </button>
+            </div>
+
+            <!-- CIRCULAR HYDRATION PROGRESS RING + LIQUID WAVE -->
+            <div class="relative flex flex-col items-center justify-center py-2">
+                <div class="relative w-60 h-60 flex items-center justify-center">
+                    <!-- Inner Liquid Wave Sphere -->
+                    <div class="absolute w-44 h-44 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800/80 inset-0 m-auto shadow-inner border border-slate-200/50 dark:border-slate-700/50">
+                        <div id="waterFillContainer" class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-sky-600/80 via-sky-500/60 to-sky-400/50 transition-all duration-700 ease-out" style="height: 0%;">
+                            <!-- SVG Wave Overlay -->
+                            <svg class="water-wave absolute -top-3 left-0 w-[200%] h-4 fill-sky-400/50" viewBox="0 0 1200 120" preserveAspectRatio="none">
+                                <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V120H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z"></path>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- SVG Progress Ring -->
+                    <svg class="w-60 h-60 relative z-10" viewBox="0 0 240 240">
+                        <defs>
+                            <linearGradient id="hydroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#38bdf8" />
+                                <stop offset="100%" stop-color="#2563eb" />
+                            </linearGradient>
+                        </defs>
+                        <!-- Background Track -->
+                        <circle
+                            cx="120" cy="120" r="102"
+                            fill="transparent"
+                            stroke="currentColor"
+                            stroke-width="14"
+                            class="text-slate-200 dark:text-slate-800"
+                        />
+                        <!-- Animated Foreground Value -->
+                        <circle
+                            id="progressRing"
+                            cx="120" cy="120" r="102"
+                            fill="transparent"
+                            stroke="url(#hydroGrad)"
+                            stroke-width="14"
+                            stroke-linecap="round"
+                            stroke-dasharray="640.88"
+                            stroke-dashoffset="640.88"
+                            class="progress-ring-circle drop-shadow-md"
+                        />
+                    </svg>
+
+                    <!-- Center Readout -->
+                    <div class="absolute inset-0 flex flex-col items-center justify-center z-20 text-center px-4">
+                        <span id="percentageText" class="text-xs font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-300 mb-1">
+                            0%
+                        </span>
+                        <div class="flex items-baseline gap-1">
+                            <span id="currentIntakeText" class="text-4xl font-extrabold tracking-tight font-mono text-slate-900 dark:text-white drop-shadow-sm">0</span>
+                            <span class="text-xs font-bold text-slate-500 dark:text-slate-300">ml</span>
+                        </div>
+                        <div class="text-xs font-medium text-slate-500 dark:text-slate-300 mt-0.5">
+                            of <span id="targetIntakeText" class="font-bold">2500</span> ml
+                        </div>
+                        <div id="remainingBadge" class="mt-2 text-[11px] font-semibold text-slate-600 dark:text-slate-300 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm px-2.5 py-0.5 rounded-full border border-slate-200/60 dark:border-slate-700/60">
+                            2500 ml left
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QUICK ADD WATER BUTTONS -->
+            <div>
+                <div class="flex items-center justify-between mb-2.5">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Quick Log Intake</h2>
+                    <button onclick="openCustomDrinkModal()" class="text-xs font-semibold text-sky-500 hover:underline flex items-center gap-1">
+                        <i class="fa-solid fa-plus-circle"></i> Custom ml
+                    </button>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <!-- 150ml Small Cup -->
+                    <button onclick="logWater(150, 'Small Cup')" class="group relative overflow-hidden rounded-2xl bg-slate-50 dark:bg-slate-800/80 hover:bg-sky-50 dark:hover:bg-sky-950/40 border border-slate-200/80 dark:border-slate-700/70 hover:border-sky-400/50 p-3.5 flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm">
+                        <div class="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-mug-hot text-base"></i>
+                        </div>
+                        <span class="text-sm font-extrabold text-slate-800 dark:text-slate-100">+150 ml</span>
+                        <span class="text-[11px] text-slate-400 font-medium">Small Cup</span>
+                    </button>
+
+                    <!-- 250ml Standard Glass -->
+                    <button onclick="logWater(250, 'Glass')" class="group relative overflow-hidden rounded-2xl bg-gradient-to-b from-sky-500/15 to-blue-600/10 dark:from-sky-500/20 dark:to-blue-600/15 hover:from-sky-500/25 hover:to-blue-600/20 border border-sky-400/40 p-3.5 flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm">
+                        <div class="w-10 h-10 rounded-xl bg-sky-500 text-white flex items-center justify-center mb-1.5 shadow-md shadow-sky-500/30 group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-glass-water text-base"></i>
+                        </div>
+                        <span class="text-sm font-extrabold text-sky-600 dark:text-sky-300">+250 ml</span>
+                        <span class="text-[11px] text-sky-600/80 dark:text-sky-300/80 font-medium">Standard Glass</span>
+                    </button>
+
+                    <!-- 500ml Sport Bottle -->
+                    <button onclick="logWater(500, 'Bottle')" class="group relative overflow-hidden rounded-2xl bg-slate-50 dark:bg-slate-800/80 hover:bg-sky-50 dark:hover:bg-sky-950/40 border border-slate-200/80 dark:border-slate-700/70 hover:border-sky-400/50 p-3.5 flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm">
+                        <div class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-bottle-water text-base"></i>
+                        </div>
+                        <span class="text-sm font-extrabold text-slate-800 dark:text-slate-100">+500 ml</span>
+                        <span class="text-[11px] text-slate-400 font-medium">Sport Bottle</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- REMINDER SCHEDULER CARD (30 MIN / 1 HOUR / TEST) -->
+            <div class="rounded-3xl bg-slate-900 dark:bg-slate-800/90 text-white p-4 shadow-xl border border-slate-800 dark:border-slate-700/80 relative overflow-hidden">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center">
+                            <i class="fa-solid fa-stopwatch text-base"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold leading-tight">Hydration Reminder</h3>
+                            <p id="schedulerSubtext" class="text-[11px] text-slate-400">Pop-up & audio alert every 30 mins</p>
+                        </div>
+                    </div>
+
+                    <!-- Pause / Resume Toggle -->
+                    <button id="timerToggleBtn" onclick="toggleReminderActive()" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 transition active:scale-95">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" id="timerPulseDot"></span>
+                        <span id="timerToggleText">Active</span>
+                    </button>
+                </div>
+
+                <!-- Interval Selector Tabs (30m / 1h / 10s Demo) -->
+                <div class="grid grid-cols-3 gap-1.5 bg-slate-950/60 p-1 rounded-2xl mb-3.5 border border-slate-800">
+                    <button id="intervalBtn30" onclick="setReminderInterval(30)" class="py-2 px-2 rounded-xl text-xs font-bold transition-all bg-sky-500 text-white shadow">
+                        Every 30 min
+                    </button>
+                    <button id="intervalBtn60" onclick="setReminderInterval(60)" class="py-2 px-2 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white">
+                        Every 1 hour
+                    </button>
+                    <button id="intervalBtnTest" onclick="setReminderInterval(0.1667)" class="py-2 px-2 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white flex items-center justify-center gap-1" title="10-second loop to test pop-up alert immediately">
+                        <i class="fa-solid fa-bolt text-amber-400 text-[10px]"></i> 10s Test
+                    </button>
+                </div>
+
+                <!-- Live Countdown Display & Trigger Now -->
+                <div class="bg-slate-950/50 rounded-2xl p-3 flex items-center justify-between border border-slate-800/80">
+                    <div>
+                        <span class="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">Next Water Alert In</span>
+                        <div class="flex items-baseline gap-2 mt-0.5">
+                            <span id="countdownDisplay" class="text-2xl font-mono font-extrabold text-sky-400 tracking-wider">30:00</span>
+                            <span id="nextAlertClockTime" class="text-[11px] text-slate-400 font-medium"></span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button onclick="resetCountdownTimer()" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition active:scale-95" title="Reset Timer">
+                            <i class="fa-solid fa-rotate-left text-xs"></i>
+                        </button>
+                        <button onclick="triggerWaterAlert()" class="px-3 py-2 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30 text-xs font-bold transition active:scale-95 flex items-center gap-1.5">
+                            <i class="fa-solid fa-bell"></i> Test Pop-up
+                        </button>
+                    </div>
+                </div>
+
+                <!-- System Browser Notification Permission Row -->
+                <div class="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                    <span class="text-slate-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-mobile-screen-button text-sky-400"></i>
+                        System Push Alert: <strong id="notifPermissionStatus" class="text-slate-200">Checking...</strong>
+                    </span>
+                    <button id="enableNotifBtn" onclick="requestSystemNotificationPermission()" class="text-sky-400 hover:text-sky-300 font-semibold underline">
+                        Enable Push
+                    </button>
+                </div>
+            </div>
+
+            <!-- TODAY'S HYDRATION TIMELINE LOG -->
+            <div>
+                <div class="flex items-center justify-between mb-2.5">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                        Today's Drink Log (<span id="logCountBadge">0</span>)
+                    </h2>
+                    <button id="clearLogsBtn" onclick="clearTodayLogs()" class="text-[11px] font-semibold text-rose-500 hover:underline hidden">
+                        Reset Today
+                    </button>
+                </div>
+
+                <div id="drinkLogContainer" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    <!-- Dynamically populated logs -->
+                </div>
+            </div>
+
+        </main>
+
+        <!-- ANDROID GESTURE PILL FOOTER -->
+        <footer class="py-2.5 px-6 border-t border-slate-100 dark:border-slate-800/80 flex flex-col items-center justify-center bg-slate-50/60 dark:bg-slate-900/80">
+            <div class="w-28 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700"></div>
+        </footer>
+
+        <!-- ============================================================== -->
+        <!-- MODAL 1: START OF EVERYDAY TARGET SETUP (HEIGHT/WEIGHT OR MANUAL) -->
+        <!-- ============================================================== -->
+        <div id="setupModal" class="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden opacity-0 transition-opacity duration-200">
+            <div class="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[2rem] sm:rounded-[2rem] border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl p-6 max-h-[92vh] overflow-y-auto">
+                
+                <!-- Modal Header -->
+                <div class="flex items-start justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-sky-400 to-blue-600 text-white flex items-center justify-center shadow-lg shadow-sky-500/20">
+                            <i class="fa-solid fa-sun text-lg"></i>
+                        </div>
+                        <div>
+                            <span id="setupModalBadge" class="text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-md bg-sky-500/15 text-sky-500">Start of Day Setup</span>
+                            <h2 class="text-lg font-extrabold text-slate-900 dark:text-white mt-0.5">Set Today's Water Target</h2>
+                        </div>
+                    </div>
+                    <button onclick="closeSetupModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center justify-center">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- Mode Selector Tabs: Biometric Range vs Manual Goal -->
+                <div class="grid grid-cols-2 gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl mb-5">
+                    <button id="tabBtnBio" onclick="switchSetupTab('bio')" class="py-2.5 px-3 rounded-xl text-xs font-bold transition-all bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 shadow-sm flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-weight-scale"></i> Height & Weight
+                    </button>
+                    <button id="tabBtnManual" onclick="switchSetupTab('manual')" class="py-2.5 px-3 rounded-xl text-xs font-bold transition-all text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-sliders"></i> Manual Target
+                    </button>
+                </div>
+
+                <!-- TAB 1: HEIGHT & WEIGHT SMART RANGE CALCULATOR -->
+                <div id="setupTabBio" class="space-y-4">
+                    <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                        Enter your <strong class="text-slate-700 dark:text-slate-200">weight</strong> and <strong class="text-slate-700 dark:text-slate-200">height</strong> to calculate your recommended daily hydration range.
+                    </p>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <!-- Weight Input -->
+                        <div class="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-3">
+                            <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                                Weight (kg)
+                            </label>
+                            <div class="flex items-center justify-between">
+                                <input id="inputWeightKg" type="number" min="25" max="250" value="70" oninput="calculateBiometricRange()" class="w-full bg-transparent text-2xl font-extrabold font-mono text-slate-900 dark:text-white focus:outline-none">
+                                <span class="text-xs font-bold text-slate-400">kg</span>
+                            </div>
+                        </div>
+
+                        <!-- Height Input -->
+                        <div class="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-3">
+                            <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                                Height (cm)
+                            </label>
+                            <div class="flex items-center justify-between">
+                                <input id="inputHeightCm" type="number" min="100" max="240" value="172" oninput="calculateBiometricRange()" class="w-full bg-transparent text-2xl font-extrabold font-mono text-slate-900 dark:text-white focus:outline-none">
+                                <span class="text-xs font-bold text-slate-400">cm</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Calculated Range Card -->
+                    <div class="rounded-2xl bg-gradient-to-br from-sky-500/10 via-blue-500/10 to-indigo-500/10 border border-sky-500/30 p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold text-sky-600 dark:text-sky-400 flex items-center gap-1.5">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Recommended Daily Range
+                            </span>
+                            <span id="bmiCategoryBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-600 dark:text-sky-300">
+                                BMI 23.7
+                            </span>
+                        </div>
+
+                        <div class="text-2xl font-extrabold font-mono text-slate-900 dark:text-white mb-3" id="calculatedRangeText">
+                            2300 ml – 2950 ml
+                        </div>
+
+                        <!-- 3 Selectable Presets inside the Range -->
+                        <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-2">
+                            Tap to choose your target from this range:
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button type="button" id="rangeBtnMin" onclick="selectRangePreset('min')" class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/80 text-center transition all">
+                                <div class="text-[10px] font-bold text-slate-400 uppercase">Light</div>
+                                <div id="rangeValMin" class="text-sm font-extrabold font-mono text-slate-800 dark:text-slate-100 mt-0.5">2300ml</div>
+                            </button>
+                            <button type="button" id="rangeBtnMid" onclick="selectRangePreset('mid')" class="p-2.5 rounded-xl border-2 border-sky-500 bg-sky-500/15 text-center transition all">
+                                <div class="text-[10px] font-bold text-sky-600 dark:text-sky-300 uppercase">Optimal</div>
+                                <div id="rangeValMid" class="text-sm font-extrabold font-mono text-sky-600 dark:text-sky-300 mt-0.5">2600ml</div>
+                            </button>
+                            <button type="button" id="rangeBtnMax" onclick="selectRangePreset('max')" class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/80 text-center transition all">
+                                <div class="text-[10px] font-bold text-slate-400 uppercase">Active</div>
+                                <div id="rangeValMax" class="text-sm font-extrabold font-mono text-slate-800 dark:text-slate-100 mt-0.5">2950ml</div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: MANUAL TARGET INPUT & SLIDER -->
+                <div id="setupTabManual" class="space-y-4 hidden">
+                    <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                        Set your own custom hydration goal for the day using the slider or direct input.
+                    </p>
+
+                    <div class="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 text-center">
+                        <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
+                            Custom Daily Target (ml)
+                        </label>
+                        <div class="flex items-center justify-center gap-2 mb-4">
+                            <input id="manualTargetInput" type="number" step="50" min="500" max="6000" value="2500" oninput="syncManualSlider(this.value)" class="w-36 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl py-2 text-3xl font-extrabold font-mono text-sky-500 focus:outline-none focus:border-sky-500">
+                            <span class="text-sm font-bold text-slate-400">ml</span>
+                        </div>
+
+                        <input id="manualTargetSlider" type="range" min="1000" max="5000" step="50" value="2500" oninput="syncManualInput(this.value)" class="w-full">
+                        <div class="flex justify-between text-[10px] font-mono text-slate-400 mt-1.5">
+                            <span>1000 ml</span>
+                            <span>2500 ml</span>
+                            <span>5000 ml</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reminder Interval Quick Choice in Start-of-Day Modal -->
+                <div class="mt-5 pt-4 border-t border-slate-200/70 dark:border-slate-800">
+                    <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
+                        Reminder Frequency
+                    </label>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <button type="button" id="modalFreq30" onclick="selectModalFrequency(30)" class="py-2.5 px-3 rounded-xl border-2 border-sky-500 bg-sky-500/10 text-sky-600 dark:text-sky-300 text-xs font-bold flex items-center justify-center gap-2">
+                            <i class="fa-regular fa-clock"></i> Every 30 Mins
+                        </button>
+                        <button type="button" id="modalFreq60" onclick="selectModalFrequency(60)" class="py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold flex items-center justify-center gap-2">
+                            <i class="fa-regular fa-hourglass-half"></i> Every 1 Hour
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Reset Today's Log Checkbox (shown when user manually clicks 'New Day') -->
+                <div id="resetDayCheckboxRow" class="mt-4 flex items-center gap-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl p-2.5 hidden">
+                    <input id="resetDayLogsCheckbox" type="checkbox" class="w-4 h-4 accent-sky-500 rounded cursor-pointer">
+                    <label for="resetDayLogsCheckbox" class="text-xs font-medium text-amber-700 dark:text-amber-300 cursor-pointer">
+                        Also clear today's logged water intake (Start fresh)
+                    </label>
+                </div>
+
+                <!-- Save / Start Day CTA -->
+                <button onclick="saveDailySetup()" class="mt-5 w-full py-3.5 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-extrabold text-sm shadow-lg shadow-sky-500/25 transition active:scale-98 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-check-circle"></i>
+                    <span>Save Target & Start Reminders</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- MODAL 2: POP-UP WATER REMINDER ALERT (EVERY 30M / 1HR)          -->
+        <!-- ============================================================== -->
+        <div id="reminderAlertModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+            <div class="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[2rem] border border-sky-500/40 shadow-2xl shadow-sky-500/20 p-6 text-center relative overflow-hidden animate-bounce-once">
+                <!-- Decorative Top Glow -->
+                <div class="absolute -top-16 -left-16 w-40 h-40 bg-sky-500/20 rounded-full blur-2xl pointer-events-none"></div>
+                <div class="absolute -bottom-16 -right-16 w-40 h-40 bg-blue-500/20 rounded-full blur-2xl pointer-events-none"></div>
+
+                <!-- Animated Bell / Droplet Badge -->
+                <div class="w-16 h-16 rounded-3xl bg-gradient-to-br from-sky-400 to-blue-600 text-white flex items-center justify-center mx-auto mb-4 shadow-xl shadow-sky-500/30 animate-bell">
+                    <i class="fa-solid fa-glass-water-droplet text-2xl"></i>
+                </div>
+
+                <span class="text-[11px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full bg-sky-500/15 text-sky-500">
+                    Time to Hydrate!
+                </span>
+
+                <h3 class="text-xl font-extrabold text-slate-900 dark:text-white mt-2">
+                    Drink Some Water 💧
+                </h3>
+                <p id="alertModalSubtext" class="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+                    Your scheduled hydration reminder went off. Take a refreshing sip to stay energized!
+                </p>
+
+                <!-- Current Progress Mini Bar inside Alert -->
+                <div class="my-4 bg-slate-100 dark:bg-slate-800/90 rounded-2xl p-3 border border-slate-200/70 dark:border-slate-700/70">
+                    <div class="flex justify-between text-xs font-bold mb-1.5">
+                        <span class="text-slate-500 dark:text-slate-400">Today's Progress</span>
+                        <span id="alertProgressLabel" class="text-sky-500 font-mono">1250 / 2500 ml</span>
+                    </div>
+                    <div class="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div id="alertProgressBar" class="h-full bg-gradient-to-r from-sky-400 to-blue-600 rounded-full transition-all duration-500" style="width: 50%"></div>
+                    </div>
+                </div>
+
+                <!-- Primary Action Buttons -->
+                <div class="grid grid-cols-2 gap-2.5 mb-2.5">
+                    <button onclick="acceptReminderDrink(150)" class="py-3 px-3 rounded-2xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-600 dark:text-sky-300 border border-sky-500/30 font-extrabold text-xs flex items-center justify-center gap-1.5 transition active:scale-95">
+                        <i class="fa-solid fa-mug-hot"></i> Drank 150 ml
+                    </button>
+                    <button onclick="acceptReminderDrink(250)" class="py-3 px-3 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-extrabold text-xs shadow-lg shadow-sky-500/25 flex items-center justify-center gap-1.5 transition active:scale-95">
+                        <i class="fa-solid fa-glass-water"></i> Drank 250 ml
+                    </button>
+                </div>
+
+                <!-- Snooze / Dismiss Row -->
+                <div class="grid grid-cols-2 gap-2.5">
+                    <button onclick="snoozeReminder(10)" class="py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs transition active:scale-95">
+                        <i class="fa-regular fa-clock mr-1"></i> Snooze 10m
+                    </button>
+                    <button onclick="dismissReminderAlert()" class="py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 font-bold text-xs transition active:scale-95">
+                        Dismiss
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- MODAL 3: CUSTOM DRINK AMOUNT MODAL                             -->
+        <!-- ============================================================== -->
+        <div id="customDrinkModal" class="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+            <div class="w-full max-w-xs bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-base font-extrabold">Add Custom Intake</h3>
+                    <button onclick="closeCustomDrinkModal()" class="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center">
+                        <i class="fa-solid fa-xmark text-xs"></i>
+                    </button>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800 rounded-2xl p-3 mb-4 flex items-center justify-between border border-slate-200 dark:border-slate-700">
+                    <input id="customAmountInput" type="number" min="10" max="2000" step="10" value="300" class="w-full bg-transparent text-2xl font-extrabold font-mono text-sky-500 focus:outline-none">
+                    <span class="text-xs font-bold text-slate-400">ml</span>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="closeCustomDrinkModal()" class="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-500">Cancel</button>
+                    <button onclick="submitCustomDrink()" class="flex-1 py-2.5 rounded-xl bg-sky-500 text-white text-xs font-bold shadow-md shadow-sky-500/20">Add Water</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOAST NOTIFICATION BANNER -->
+        <div id="toastBanner" class="fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 dark:bg-white/95 text-white dark:text-slate-900 px-4 py-2.5 rounded-2xl shadow-xl text-xs font-bold flex items-center gap-2 pointer-events-none opacity-0 -translate-y-3 transition-all duration-300">
+            <i class="fa-solid fa-circle-check text-sky-400 dark:text-sky-600"></i>
+            <span id="toastMessage">Added 250 ml!</span>
+        </div>
+
+    </div>
+
+    <!-- APPLICATION LOGIC -->
+    <script>
+        // =========================================================================
+        // STATE MANAGEMENT & LOCAL STORAGE KEYS
+        // =========================================================================
+        const STORAGE_KEY = 'hydropulse_apk_state_v1';
+
+        const RING_CIRCUMFERENCE = 2 * Math.PI * 102; // r=102 => ~640.88
+
+        let appState = {
+            lastSetupDate: '',         // YYYY-MM-DD of last start-of-day target confirmation
+            targetMl: 2600,            // Daily target in ml
+            currentMl: 0,              // Consumed today in ml
+            setupMode: 'bio',          // 'bio' (Height & Weight) or 'manual'
+            weightKg: 70,              // User weight in kg
+            heightCm: 172,             // User height in cm
+            selectedPreset: 'mid',     // 'min', 'mid', or 'max'
+            intervalMinutes: 30,       // 30 (30 min), 60 (1 hour), or 0.1667 (10s test)
+            reminderActive: true,      // Whether countdown is running
+            soundEnabled: true,        // Web Audio API chime enabled
+            darkMode: true,            // Dark mode aesthetic
+            logs: []                   // Array of { id, amount, label, time }
+        };
+
+        // Runtime timer variables
+        let remainingSeconds = 30 * 60;
+        let timerIntervalId = null;
+        let currentModalTab = 'bio';
+        let calculatedPresets = { min: 2300, mid: 2600, max: 2950 };
+        let audioCtx = null;
+
+        // =========================================================================
+        // HELPER: GET TODAY'S DATE STRING (YYYY-MM-DD)
+        // =========================================================================
+        function getTodayDateString() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // =========================================================================
+        // WEB AUDIO API SYNTHESIZER (GENTLE WATER DROP & REMINDER CHIME)
+        // =========================================================================
+        function getAudioContext() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) {
+                    audioCtx = new AudioContextClass();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        function playWaterLogSound() {
+            if (!appState.soundEnabled) return;
+            try {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(520, now);
+                osc.frequency.exponentialRampToValueAtTime(980, now + 0.14);
+
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.17);
+            } catch (e) {
+                // Ignore audio context blocks
+            }
+        }
+
+        function playReminderChime() {
+            if (!appState.soundEnabled) return;
+            try {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+
+                const notes = [587.33, 783.99, 1046.50, 1174.66]; // D5, G5, C6, D6 pleasant harmonic chime
+                notes.forEach((freq, idx) => {
+                    const start = ctx.currentTime + idx * 0.14;
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, start);
+
+                    gain.gain.setValueAtTime(0.22, start);
+                    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.55);
+
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+
+                    osc.start(start);
+                    osc.stop(start + 0.56);
+                });
+            } catch (e) {
+                // Ignore if blocked by autoplay policy
+            }
+        }
+
+        // =========================================================================
+        // LOAD & SAVE STATE
+        // =========================================================================
+        function loadState() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    appState = { ...appState, ...parsed };
+                }
+            } catch (e) {
+                console.error('Failed to read localStorage:', e);
+            }
+
+            // Apply theme
+            applyTheme();
+
+            const todayStr = getTodayDateString();
+            const isNewDay = appState.lastSetupDate !== todayStr;
+
+            // If it's a new calendar day, reset today's intake & prompt Start-of-Day Target Setup
+            if (isNewDay) {
+                appState.currentMl = 0;
+                appState.logs = [];
+                saveState();
+                // Automatically open the Start-of-Day Target Setup Modal
+                setTimeout(() => {
+                    openSetupModal(false, true);
+                }, 250);
+            }
+
+            remainingSeconds = Math.round(appState.intervalMinutes * 60);
+            updateAllUI();
+            startCountdownLoop();
+            checkNotificationPermissionUI();
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+            } catch (e) {
+                console.error('Failed to save state:', e);
+            }
+        }
+
+        // =========================================================================
+        // HEIGHT & WEIGHT BIOMETRIC CALCULATOR
+        // Formula:
+        // Base range: 32 ml/kg (Light) to 42 ml/kg (Active), adjusted for height deviation from 170cm
+        // =========================================================================
+        function calculateBiometricRange() {
+            const weightInput = document.getElementById('inputWeightKg');
+            const heightInput = document.getElementById('inputHeightCm');
+
+            let w = parseFloat(weightInput.value) || 70;
+            let h = parseFloat(heightInput.value) || 170;
+
+            w = Math.max(20, Math.min(250, w));
+            h = Math.max(90, Math.min(240, h));
+
+            // Height modifier: +3 ml per cm above 165cm
+            const heightModifier = Math.round((h - 165) * 3.5);
+
+            // Round to nearest 50ml for clean targets
+            const minMl = Math.round((w * 31 + heightModifier) / 50) * 50;
+            const midMl = Math.round((w * 36 + heightModifier) / 50) * 50;
+            const maxMl = Math.round((w * 42 + heightModifier) / 50) * 50;
+
+            calculatedPresets = {
+                min: Math.max(1200, minMl),
+                mid: Math.max(1500, midMl),
+                max: Math.max(1800, maxMl)
+            };
+
+            // BMI calculation for helpful biometric context
+            const heightM = h / 100;
+            const bmi = (w / (heightM * heightM)).toFixed(1);
+            document.getElementById('bmiCategoryBadge').textContent = `BMI ${bmi}`;
+
+            document.getElementById('calculatedRangeText').textContent =
+                `${calculatedPresets.min} ml – ${calculatedPresets.max} ml`;
+
+            document.getElementById('rangeValMin').textContent = `${calculatedPresets.min}ml`;
+            document.getElementById('rangeValMid').textContent = `${calculatedPresets.mid}ml`;
+            document.getElementById('rangeValMax').textContent = `${calculatedPresets.max}ml`;
+
+            highlightRangePresetButton(appState.selectedPreset);
+        }
+
+        function selectRangePreset(presetKey) {
+            appState.selectedPreset = presetKey;
+            highlightRangePresetButton(presetKey);
+        }
+
+        function highlightRangePresetButton(presetKey) {
+            const btns = {
+                min: document.getElementById('rangeBtnMin'),
+                mid: document.getElementById('rangeBtnMid'),
+                max: document.getElementById('rangeBtnMax')
+            };
+
+            Object.keys(btns).forEach(key => {
+                const btn = btns[key];
+                if (key === presetKey) {
+                    btn.className = 'p-2.5 rounded-xl border-2 border-sky-500 bg-sky-500/15 text-center transition-all scale-[1.02]';
+                } else {
+                    btn.className = 'p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/80 text-center transition-all opacity-80 hover:opacity-100';
+                }
+            });
+        }
+
+        // =========================================================================
+        // START-OF-DAY TARGET MODAL HANDLERS
+        // =========================================================================
+        function openSetupModal(showResetOption = false, isAutoStartOfDay = false) {
+            const modal = document.getElementById('setupModal');
+            const badge = document.getElementById('setupModalBadge');
+            const resetRow = document.getElementById('resetDayCheckboxRow');
+            const resetCheck = document.getElementById('resetDayLogsCheckbox');
+
+            badge.textContent = isAutoStartOfDay ? 'Good Morning • New Day Setup' : 'Hydration Target & Biometrics';
+
+            if (showResetOption && appState.currentMl > 0) {
+                resetRow.classList.remove('hidden');
+                resetCheck.checked = false;
+            } else {
+                resetRow.classList.add('hidden');
+                resetCheck.checked = false;
+            }
+
+            // Populate current values
+            document.getElementById('inputWeightKg').value = appState.weightKg;
+            document.getElementById('inputHeightCm').value = appState.heightCm;
+            document.getElementById('manualTargetInput').value = appState.targetMl;
+            document.getElementById('manualTargetSlider').value = Math.min(5000, Math.max(1000, appState.targetMl));
+
+            calculateBiometricRange();
+            switchSetupTab(appState.setupMode || 'bio');
+            selectModalFrequency(appState.intervalMinutes === 60 ? 60 : 30);
+
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.remove('opacity-0');
+            });
+        }
+
+        function closeSetupModal() {
+            const modal = document.getElementById('setupModal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        }
+
+        function switchSetupTab(tab) {
+            currentModalTab = tab;
+            const tabBio = document.getElementById('setupTabBio');
+            const tabManual = document.getElementById('setupTabManual');
+            const btnBio = document.getElementById('tabBtnBio');
+            const btnManual = document.getElementById('tabBtnManual');
+
+            if (tab === 'bio') {
+                tabBio.classList.remove('hidden');
+                tabManual.classList.add('hidden');
+                btnBio.className = 'py-2.5 px-3 rounded-xl text-xs font-bold transition-all bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 shadow-sm flex items-center justify-center gap-1.5';
+                btnManual.className = 'py-2.5 px-3 rounded-xl text-xs font-bold transition-all text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5';
+            } else {
+                tabBio.classList.add('hidden');
+                tabManual.classList.remove('hidden');
+                btnManual.className = 'py-2.5 px-3 rounded-xl text-xs font-bold transition-all bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 shadow-sm flex items-center justify-center gap-1.5';
+                btnBio.className = 'py-2.5 px-3 rounded-xl text-xs font-bold transition-all text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5';
+            }
+        }
+
+        function syncManualSlider(val) {
+            const num = parseInt(val, 10) || 2500;
+            document.getElementById('manualTargetSlider').value = Math.min(5000, Math.max(1000, num));
+        }
+
+        function syncManualInput(val) {
+            document.getElementById('manualTargetInput').value = val;
+        }
+
+        let modalSelectedInterval = 30;
+        function selectModalFrequency(mins) {
+            modalSelectedInterval = mins;
+            const btn30 = document.getElementById('modalFreq30');
+            const btn60 = document.getElementById('modalFreq60');
+            if (mins === 30) {
+                btn30.className = 'py-2.5 px-3 rounded-xl border-2 border-sky-500 bg-sky-500/10 text-sky-600 dark:text-sky-300 text-xs font-bold flex items-center justify-center gap-2';
+                btn60.className = 'py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold flex items-center justify-center gap-2';
+            } else {
+                btn60.className = 'py-2.5 px-3 rounded-xl border-2 border-sky-500 bg-sky-500/10 text-sky-600 dark:text-sky-300 text-xs font-bold flex items-center justify-center gap-2';
+                btn30.className = 'py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold flex items-center justify-center gap-2';
+            }
+        }
+
+        function saveDailySetup() {
+            appState.setupMode = currentModalTab;
+            appState.lastSetupDate = getTodayDateString();
+
+            if (currentModalTab === 'bio') {
+                const w = parseFloat(document.getElementById('inputWeightKg').value) || 70;
+                const h = parseFloat(document.getElementById('inputHeightCm').value) || 172;
+                appState.weightKg = Math.max(25, Math.min(250, w));
+                appState.heightCm = Math.max(100, Math.min(240, h));
+                calculateBiometricRange();
+                appState.targetMl = calculatedPresets[appState.selectedPreset] || calculatedPresets.mid;
+            } else {
+                const manualVal = parseInt(document.getElementById('manualTargetInput').value, 10) || 2500;
+                appState.targetMl = Math.max(500, Math.min(8000, manualVal));
+            }
+
+            // Check if user requested to clear today's logs
+            const resetCheck = document.getElementById('resetDayLogsCheckbox');
+            if (resetCheck && resetCheck.checked) {
+                appState.currentMl = 0;
+                appState.logs = [];
+            }
+
+            setReminderInterval(modalSelectedInterval);
+            appState.reminderActive = true;
+
+            saveState();
+            updateAllUI();
+            closeSetupModal();
+            playWaterLogSound();
+            showToast(`Daily Goal set to ${appState.targetMl} ml!`);
+        }
+
+        // =========================================================================
+        // WATER INTAKE LOGGING & UNDO
+        // =========================================================================
+        function logWater(amountMl, label = 'Water') {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            appState.currentMl += amountMl;
+            appState.logs.unshift({
+                id: Date.now() + Math.random(),
+                amount: amountMl,
+                label: label,
+                time: timeStr
+            });
+
+            // Reset reminder timer upon drinking water so user gets full interval before next alert
+            remainingSeconds = Math.round(appState.intervalMinutes * 60);
+
+            saveState();
+            playWaterLogSound();
+            updateAllUI();
+            showToast(`+${amountMl} ml logged (${label})`);
+        }
+
+        function deleteLogItem(id) {
+            const idx = appState.logs.findIndex(item => item.id === id);
+            if (idx !== -1) {
+                const removed = appState.logs[idx];
+                appState.currentMl = Math.max(0, appState.currentMl - removed.amount);
+                appState.logs.splice(idx, 1);
+                saveState();
+                updateAllUI();
+                showToast(`Removed ${removed.amount} ml entry`);
+            }
+        }
+
+        function clearTodayLogs() {
+            appState.currentMl = 0;
+            appState.logs = [];
+            saveState();
+            updateAllUI();
+            showToast("Today's water log reset to 0 ml");
+        }
+
+        // Custom Drink Modal
+        function openCustomDrinkModal() {
+            document.getElementById('customDrinkModal').classList.remove('hidden');
+            document.getElementById('customAmountInput').focus();
+        }
+
+        function closeCustomDrinkModal() {
+            document.getElementById('customDrinkModal').classList.add('hidden');
+        }
+
+        function submitCustomDrink() {
+            const val = parseInt(document.getElementById('customAmountInput').value, 10);
+            if (val && val > 0 && val <= 5000) {
+                logWater(val, 'Custom');
+                closeCustomDrinkModal();
+            }
+        }
+
+        // =========================================================================
+        // REMINDER SCHEDULER & COUNTDOWN ENGINE (30 MIN / 1 HOUR / 10S TEST)
+        // =========================================================================
+        function setReminderInterval(minutes) {
+            appState.intervalMinutes = minutes;
+            remainingSeconds = Math.round(minutes * 60);
+            appState.reminderActive = true;
+            saveState();
+            updateSchedulerUI();
+        }
+
+        function toggleReminderActive() {
+            appState.reminderActive = !appState.reminderActive;
+            saveState();
+            updateSchedulerUI();
+            showToast(appState.reminderActive ? 'Hydration reminders resumed' : 'Reminders paused');
+        }
+
+        function resetCountdownTimer() {
+            remainingSeconds = Math.round(appState.intervalMinutes * 60);
+            updateSchedulerUI();
+            showToast('Reminder countdown reset');
+        }
+
+        function startCountdownLoop() {
+            if (timerIntervalId) clearInterval(timerIntervalId);
+            timerIntervalId = setInterval(() => {
+                updateClockStatusBar();
+
+                if (!appState.reminderActive) return;
+
+                if (remainingSeconds > 0) {
+                    remainingSeconds--;
+                    renderCountdownTime();
+                } else {
+                    // Timer reached 00:00 -> Trigger Pop-up Alert, Chime & Push Notification!
+                    triggerWaterAlert();
+                    remainingSeconds = Math.round(appState.intervalMinutes * 60);
+                    renderCountdownTime();
+                }
+            }, 1000);
+        }
+
+        function renderCountdownTime() {
+            const mins = Math.floor(remainingSeconds / 60);
+            const secs = remainingSeconds % 60;
+            const formatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            document.getElementById('countdownDisplay').textContent = formatted;
+        }
+
+        // =========================================================================
+        // TRIGGER WATER REMINDER ALERT (MODAL + WEB AUDIO + BROWSER PUSH)
+        // =========================================================================
+        function triggerWaterAlert() {
+            // 1. Play pleasant Web Audio API chime
+            playReminderChime();
+
+            // 2. Update & Show In-App Pop-up Modal
+            const pct = Math.min(100, Math.round((appState.currentMl / appState.targetMl) * 100));
+            document.getElementById('alertProgressLabel').textContent = `${appState.currentMl} / ${appState.targetMl} ml (${pct}%)`;
+            document.getElementById('alertProgressBar').style.width = `${pct}%`;
+
+            const intervalLabel = appState.intervalMinutes === 60
+                ? '1-hour'
+                : appState.intervalMinutes === 30
+                    ? '30-minute'
+                    : 'scheduled';
+            document.getElementById('alertModalSubtext').textContent =
+                `Your ${intervalLabel} hydration reminder is here! Drink a glass of water to keep your body hydrated.`;
+
+            document.getElementById('reminderAlertModal').classList.remove('hidden');
+
+            // 3. Fire System Browser Notification if permitted
+            sendBrowserNotification();
+        }
+
+        function acceptReminderDrink(amountMl) {
+            document.getElementById('reminderAlertModal').classList.add('hidden');
+            logWater(amountMl, 'Reminder Sip');
+        }
+
+        function snoozeReminder(snoozeMins) {
+            document.getElementById('reminderAlertModal').classList.add('hidden');
+            remainingSeconds = snoozeMins * 60;
+            appState.reminderActive = true;
+            renderCountdownTime();
+            showToast(`Reminder snoozed for ${snoozeMins} minutes`);
+        }
+
+        function dismissReminderAlert() {
+            document.getElementById('reminderAlertModal').classList.add('hidden');
+            remainingSeconds = Math.round(appState.intervalMinutes * 60);
+            renderCountdownTime();
+        }
+
+        // =========================================================================
+        // SYSTEM BROWSER NOTIFICATIONS
+        // =========================================================================
+        function checkNotificationPermissionUI() {
+            const statusEl = document.getElementById('notifPermissionStatus');
+            const btnEl = document.getElementById('enableNotifBtn');
+
+            if (!('Notification' in window)) {
+                statusEl.textContent = 'In-App Modal Only';
+                btnEl.classList.add('hidden');
+                return;
+            }
+
+            if (Notification.permission === 'granted') {
+                statusEl.textContent = 'Active';
+                statusEl.className = 'text-emerald-400 font-bold';
+                btnEl.classList.add('hidden');
+            } else if (Notification.permission === 'denied') {
+                statusEl.textContent = 'Blocked by Browser';
+                statusEl.className = 'text-rose-400 font-bold';
+                btnEl.classList.add('hidden');
+            } else {
+                statusEl.textContent = 'Tap Enable';
+                btnEl.classList.remove('hidden');
+            }
+        }
+
+        function requestSystemNotificationPermission() {
+            if (!('Notification' in window)) {
+                showToast('Browser notifications not supported in this view');
+                return;
+            }
+            Notification.requestPermission().then(permission => {
+                checkNotificationPermissionUI();
+                if (permission === 'granted') {
+                    showToast('System Push Notifications enabled!');
+                    sendBrowserNotification('HydroPulse Ready 💧', 'You will now receive water reminders on time.');
+                } else {
+                    showToast('In-app pop-up alerts will still work automatically!');
+                }
+            });
+        }
+
+        function sendBrowserNotification(customTitle, customBody) {
+            if (!('Notification' in window) || Notification.permission !== 'granted') return;
+            try {
+                const title = customTitle || 'Time to Drink Water! 💧';
+                const remaining = Math.max(0, appState.targetMl - appState.currentMl);
+                const body = customBody || `Take a refreshing glass of water! (${remaining} ml remaining for today's goal)`;
+                new Notification(title, { body });
+            } catch (e) {
+                // Ignore in restricted iframe contexts
+            }
+        }
+
+        // =========================================================================
+        // UI RENDERING & UPDATES
+        // =========================================================================
+        function updateAllUI() {
+            updateClockStatusBar();
+
+            // Date display
+            const now = new Date();
+            document.getElementById('currentDateDisplay').textContent =
+                now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+
+            // Biometric / Goal summary banner
+            const sourceLabel = document.getElementById('goalSourceLabel');
+            const summaryText = document.getElementById('biometricSummaryText');
+
+            if (appState.setupMode === 'bio') {
+                sourceLabel.textContent = `Biometric Goal (${appState.weightKg}kg • ${appState.heightCm}cm)`;
+                summaryText.textContent = `Daily Target: ${appState.targetMl} ml`;
+            } else {
+                sourceLabel.textContent = 'Custom Daily Plan';
+                summaryText.textContent = `Daily Target: ${appState.targetMl} ml`;
+            }
+
+            // Progress Ring & Wave
+            const rawPct = appState.targetMl > 0 ? Math.round((appState.currentMl / appState.targetMl) * 100) : 0;
+            const clampedPct = Math.min(100, Math.max(0, rawPct));
+
+            document.getElementById('percentageText').textContent = `${rawPct}%`;
+            document.getElementById('currentIntakeText').textContent = appState.currentMl;
+            document.getElementById('targetIntakeText').textContent = appState.targetMl;
+
+            const remainingMl = Math.max(0, appState.targetMl - appState.currentMl);
+            const remBadge = document.getElementById('remainingBadge');
+            if (remainingMl === 0) {
+                remBadge.textContent = '🎉 Daily Goal Reached!';
+                remBadge.className = 'mt-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-300 bg-emerald-500/15 px-3 py-0.5 rounded-full border border-emerald-500/30';
+            } else {
+                remBadge.textContent = `${remainingMl} ml remaining`;
+                remBadge.className = 'mt-2 text-[11px] font-semibold text-slate-600 dark:text-slate-300 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm px-2.5 py-0.5 rounded-full border border-slate-200/60 dark:border-slate-700/60';
+            }
+
+            // SVG Ring offset
+            const offset = RING_CIRCUMFERENCE - (clampedPct / 100) * RING_CIRCUMFERENCE;
+            document.getElementById('progressRing').style.strokeDashoffset = offset;
+
+            // Liquid Wave fill height
+            document.getElementById('waterFillContainer').style.height = `${clampedPct}%`;
+
+            // Sound icon state
+            const soundIcon = document.getElementById('soundToggleIcon');
+            soundIcon.className = appState.soundEnabled
+                ? 'fa-solid fa-volume-high text-sm text-sky-500'
+                : 'fa-solid fa-volume-xmark text-sm text-slate-400';
+
+            updateSchedulerUI();
+            renderDrinkLogs();
+        }
+
+        function updateSchedulerUI() {
+            const btn30 = document.getElementById('intervalBtn30');
+            const btn60 = document.getElementById('intervalBtn60');
+            const btnTest = document.getElementById('intervalBtnTest');
+
+            const activeClass = 'py-2 px-2 rounded-xl text-xs font-bold transition-all bg-sky-500 text-white shadow';
+            const inactiveClass = 'py-2 px-2 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white flex items-center justify-center gap-1';
+
+            btn30.className = appState.intervalMinutes === 30 ? activeClass : inactiveClass;
+            btn60.className = appState.intervalMinutes === 60 ? activeClass : inactiveClass;
+            btnTest.className = appState.intervalMinutes < 1 ? activeClass : inactiveClass;
+
+            const subtext = document.getElementById('schedulerSubtext');
+            if (appState.intervalMinutes === 30) {
+                subtext.textContent = 'Pop-up & audio alert every 30 minutes';
+            } else if (appState.intervalMinutes === 60) {
+                subtext.textContent = 'Pop-up & audio alert every 1 hour';
+            } else {
+                subtext.textContent = '10-second demo timer active';
+            }
+
+            const toggleBtn = document.getElementById('timerToggleBtn');
+            const toggleText = document.getElementById('timerToggleText');
+            const pulseDot = document.getElementById('timerPulseDot');
+            const alarmIcon = document.getElementById('alarmStatusIcon');
+
+            if (appState.reminderActive) {
+                toggleBtn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 transition active:scale-95';
+                toggleText.textContent = 'Active';
+                pulseDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+                alarmIcon.className = 'fa-solid fa-bell text-sky-500 text-[11px]';
+            } else {
+                toggleBtn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700 flex items-center gap-1.5 transition active:scale-95';
+                toggleText.textContent = 'Paused';
+                pulseDot.className = 'w-2 h-2 rounded-full bg-slate-500';
+                alarmIcon.className = 'fa-solid fa-bell-slash text-slate-400 text-[11px]';
+            }
+
+            renderCountdownTime();
+        }
+
+        function renderDrinkLogs() {
+            const container = document.getElementById('drinkLogContainer');
+            const countBadge = document.getElementById('logCountBadge');
+            const clearBtn = document.getElementById('clearLogsBtn');
+
+            countBadge.textContent = appState.logs.length;
+
+            if (appState.logs.length === 0) {
+                clearBtn.classList.add('hidden');
+                container.innerHTML = `
+                    <div class="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-5 text-center">
+                        <i class="fa-solid fa-glass-water text-slate-300 dark:text-slate-700 text-xl mb-1.5"></i>
+                        <p class="text-xs font-semibold text-slate-400 dark:text-slate-500">No water logged yet today</p>
+                        <p class="text-[11px] text-slate-400/80 dark:text-slate-600 mt-0.5">Tap +150ml, +250ml, or +500ml above to start</p>
+                    </div>
+                `;
+                return;
+            }
+
+            clearBtn.classList.remove('hidden');
+            container.innerHTML = appState.logs.map(item => `
+                <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 rounded-2xl px-3.5 py-2.5">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-xl bg-sky-500/15 text-sky-500 flex items-center justify-center">
+                            <i class="fa-solid fa-droplet text-xs"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-extrabold text-slate-800 dark:text-slate-100">+${item.amount} ml <span class="font-medium text-slate-400">(${item.label})</span></div>
+                            <div class="text-[10px] font-mono text-slate-400">${item.time}</div>
+                        </div>
+                    </div>
+                    <button onclick="deleteLogItem(${item.id})" class="w-7 h-7 rounded-lg hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 flex items-center justify-center transition" title="Undo entry">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // =========================================================================
+        // SOUND, THEME & STATUS BAR HELPERS
+        // =========================================================================
+        function toggleSound() {
+            appState.soundEnabled = !appState.soundEnabled;
+            saveState();
+            updateAllUI();
+            if (appState.soundEnabled) playWaterLogSound();
+            showToast(appState.soundEnabled ? 'Reminder sound chime enabled' : 'Sound muted');
+        }
+
+        function toggleTheme() {
+            appState.darkMode = !appState.darkMode;
+            applyTheme();
+            saveState();
+        }
+
+        function applyTheme() {
+            const root = document.documentElement;
+            const icon = document.getElementById('themeToggleIcon');
+            if (appState.darkMode) {
+                root.classList.add('dark');
+                if (icon) icon.className = 'fa-solid fa-sun text-sm text-amber-400';
+            } else {
+                root.classList.remove('dark');
+                if (icon) icon.className = 'fa-solid fa-moon text-sm text-slate-600';
+            }
+        }
+
+        function updateClockStatusBar() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+            const el = document.getElementById('statusBarTime');
+            if (el) el.textContent = timeStr;
+        }
+
+        let toastTimeout = null;
+        function showToast(msg) {
+            const banner = document.getElementById('toastBanner');
+            const text = document.getElementById('toastMessage');
+            text.textContent = msg;
+            banner.classList.remove('opacity-0', '-translate-y-3');
+            banner.classList.add('opacity-100', 'translate-y-0');
+
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                banner.classList.add('opacity-0', '-translate-y-3');
+                banner.classList.remove('opacity-100', 'translate-y-0');
+            }, 2400);
+        }
+
+        // Initialize app on load
+        window.onload = function () {
+            loadState();
+        };
+    </script>
+</body>
+</html>
